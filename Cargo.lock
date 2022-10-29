@@ -65,6 +65,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "beanstortion"
+version = "0.1.0"
+dependencies = [
+ "nih_plug",
+ "rand",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -779,12 +787,4 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "nih_plug_xtask",
-]
-
-[[package]]
-name = "yas_yas"
-version = "0.1.0"
-dependencies = [
- "nih_plug",
- "rand",
 ]
