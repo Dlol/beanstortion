@@ -1,5 +1,5 @@
 use nih_plug::prelude::*;
-use std::sync::Arc;
+use std::{sync::Arc, default};
 
 // This is a shortened version of the gain example with most comments removed, check out
 // https://github.com/robbert-vdh/nih-plug/blob/master/plugins/examples/gain/src/lib.rs to get
@@ -7,6 +7,8 @@ use std::sync::Arc;
 
 struct YasYas {
     params: Arc<YasYasParams>,
+    CLIPPING_FAC: f32
+    // luts: [[f32; ]]
 }
 
 #[derive(Params)]
@@ -20,12 +22,16 @@ struct YasYasParams {
 
     #[id = "gain"]
     pub gain: FloatParam,
+
+    #[id = "distType"]
+    pub dist_type: EnumParam<DistTypes>,
 }
 
 impl Default for YasYas {
     fn default() -> Self {
         Self {
             params: Arc::new(YasYasParams::default()),
+            CLIPPING_FAC: util::db_to_gain(0.0)
         }
     }
 }
@@ -76,6 +82,10 @@ impl Default for YasYasParams {
             // `.with_step_size(0.1)` function to get internal rounding.
             .with_value_to_string(formatters::v2s_f32_gain_to_db(2))
             .with_string_to_value(formatters::s2v_f32_gain_to_db()),
+            dist_type: EnumParam::new(
+                "Distortion Type",
+                DistTypes::HardClip
+            )
         }
     }
 }
@@ -140,12 +150,20 @@ impl Plugin for YasYas {
             // Smoothing is optionally built into the parameters themselves
             let clip = self.params.clip.smoothed.next();
             let gain = self.params.gain.smoothed.next();
+            let distType = self.params.dist_type.value();
+            let CLIPPING_FAC = self.CLIPPING_FAC;
 
             for sample in channel_samples {
                 *sample *= clip;
-                
-                *sample = sample.clamp(-util::db_to_gain(CLIPPING_FAC), util::db_to_gain(CLIPPING_FAC));
 
+                match distType{
+                    DistTypes::HardClip => *sample = sample.clamp(-util::db_to_gain(CLIPPING_FAC), util::db_to_gain(CLIPPING_FAC)),
+                    // DistTypes::SoftClip => todo!(),
+                    // DistTypes::SineFold => todo!(),
+                    DistTypes::Saturate => *sample = sample.tanh(),
+                    _ => {}
+                }
+                
                 *sample *= gain;
             }
         }
@@ -175,4 +193,10 @@ impl Vst3Plugin for YasYas {
 nih_export_clap!(YasYas);
 nih_export_vst3!(YasYas);
 
-const CLIPPING_FAC: f32 = -10.0;
+#[derive(PartialEq, Enum)]
+enum DistTypes {
+    HardClip,
+    SoftClip,
+    SineFold,
+    Saturate
+}
