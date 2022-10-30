@@ -1,11 +1,10 @@
-# Yas Yas
+# beanstortion
 
-## Building
+## building
 
-After installing [Rust](https://rustup.rs/), you can compile Yas Yas as follows:
-
+install rust then do this
 ```shell
-cargo xtask bundle yas_yas --release
+cargo xtask bundle beanstortion --release
 ```
 
 ## todo
@@ -14,5 +13,6 @@ cargo xtask bundle yas_yas --release
 - [ ] Soft Clip
 - [ ] Triangle Fold
 - [x] Saturation
+- [x] Parallel Distortion (mix knob)
 - [ ] GUI
 - [ ] hot sexyness
