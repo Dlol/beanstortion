@@ -11,8 +11,10 @@ cargo xtask bundle beanstortion --release
 
 - [x] Hard Clip
 - [ ] Soft Clip
-- [ ] Triangle Fold
+- [x] Sine Fold
 - [x] Saturation
 - [x] Parallel Distortion (mix knob)
+- [ ] Noise addition
 - [ ] GUI
 - [ ] hot sexyness
+- [ ] auto gain

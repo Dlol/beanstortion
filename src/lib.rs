@@ -1,5 +1,8 @@
 use nih_plug::prelude::*;
+use nih_plug_vizia::ViziaState;
 use std::{sync::Arc, default, fmt::Display};
+
+mod editor;
 
 // This is a shortened version of the gain example with most comments removed, check out
 // https://github.com/robbert-vdh/nih-plug/blob/master/plugins/examples/gain/src/lib.rs to get
@@ -13,6 +16,8 @@ struct YasYas {
 
 #[derive(Params)]
 struct YasYasParams {
+    #[persist = "editor-state"]
+    editor_state: Arc<ViziaState>,
     /// The parameter's ID is used to identify the parameter in the wrappred plugin API. As long as
     /// these IDs remain constant, you can rename and reorder these fields as you wish. The
     /// parameters are exposed to the host in the same order they were defined. In this case, this
@@ -27,7 +32,10 @@ struct YasYasParams {
     pub dist_type: EnumParam<DistTypes>,
 
     #[id = "mix"]
-    pub mix: FloatParam
+    pub mix: FloatParam,
+
+    #[id = "autogain"]
+    pub autogain: BoolParam
 }
 
 impl Default for YasYas {
@@ -42,6 +50,7 @@ impl Default for YasYas {
 impl Default for YasYasParams {
     fn default() -> Self {
         Self {
+            editor_state: editor::default_state(),
             // This gain is stored as linear gain. NIH-plug comes with useful conversion functions
             // to treat these kinds of parameters as if we were dealing with decibels. Storing this
             // as decibels is easier to work with, but requires a conversion for every sample.
@@ -93,7 +102,8 @@ impl Default for YasYasParams {
                 "Mix",
                 1.0,
                 FloatRange::Linear { min: 0.0, max: 1.0 }
-            )
+            ),
+            autogain: BoolParam::new("Auto Gain", false)
         }
     }
 }
@@ -124,6 +134,13 @@ impl Plugin for YasYas {
 
     fn params(&self) -> Arc<dyn Params> {
         self.params.clone()
+    }
+
+    fn editor(&self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        editor::create(
+            self.params.clone(), 
+            self.params.editor_state.clone()
+        )
     }
 
     fn accepts_bus_config(&self, config: &BusConfig) -> bool {
@@ -157,7 +174,14 @@ impl Plugin for YasYas {
         for channel_samples in buffer.iter_samples() {
             // Smoothing is optionally built into the parameters themselves
             let clip = self.params.clip.smoothed.next();
-            let gain = self.params.gain.smoothed.next();
+            let gain = match self.params.autogain.value() {
+                false => self.params.gain.smoothed.next(),
+                true => {
+                    let db = util::gain_to_db(clip);
+                    let reduce = util::db_to_gain(-db);
+                    reduce.clamp(0.0, util::db_to_gain(self.CLIPPING_FAC))
+                }
+            };
             let dist_type = self.params.dist_type.value();
             let clipping_fac = self.CLIPPING_FAC;
             let wet_mix = self.params.mix.smoothed.next();
